@@ -2,7 +2,6 @@
   "name": "tokencost-js",
   "version": "1.0.0",
   "description": "JavaScript port of tokencost",
-  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
