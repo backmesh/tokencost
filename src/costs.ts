@@ -13,6 +13,24 @@ export type Message = {
   name?: string;
 };
 
+export type TokenCostResult = {
+  promptCost: number;
+  promptTokens: number;
+  completionCost: number;
+  completionTokens: number;
+};
+
+export type ModelCostInfo = {
+  input_cost_per_token: number;
+  output_cost_per_token: number;
+  max_tokens?: number;
+  max_input_tokens?: number;
+  max_output_tokens?: number;
+  litellm_provider?: string;
+  mode?: string;
+  [key: string]: any;
+};
+
 /**
  * Strip the fine-tuned model name to get the base model name for cost info.
  * @param model The model name
@@ -244,12 +262,7 @@ export async function calculateAllCostsAndTokens(
   prompt: Message[] | string,
   completion: string,
   model: string
-): Promise<{
-  promptCost: number;
-  promptTokens: number;
-  completionCost: number;
-  completionTokens: number;
-}> {
+): Promise<TokenCostResult> {
   const promptCost = await calculatePromptCost(prompt, model);
   const completionCost = await calculateCompletionCost(completion, model);
   

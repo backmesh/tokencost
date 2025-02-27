@@ -1,5 +1,6 @@
-import * as fs from 'fs';
-import * as path from 'path';
+// Import fs and path conditionally for browser compatibility
+import { ModelCostInfo } from './costs';
+import * as staticCostsRaw from './model_prices.json';
 
 /**
  * Prompt (aka context) tokens are based on number of words + other chars (eg spaces and punctuation) in input.
@@ -14,19 +15,27 @@ import * as path from 'path';
 // URL for fetching the latest token costs
 export const PRICES_URL = "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json";
 
-// Load the static token costs from the JSON file
-let modelPricesPath = path.join(__dirname, 'model_prices.json');
-export const TOKEN_COSTS_STATIC = JSON.parse(fs.readFileSync(modelPricesPath, 'utf-8'));
+// Filter and export the static token costs from the JSON file
+export const TOKEN_COSTS_STATIC: Record<string, ModelCostInfo> = Object.entries(staticCostsRaw)
+  .filter(([_, value]) =>
+    typeof value === 'object' &&
+    'input_cost_per_token' in value &&
+    'output_cost_per_token' in value
+  )
+  .reduce((acc, [key, value]) => {
+    acc[key] = value as ModelCostInfo;
+    return acc;
+  }, {} as Record<string, ModelCostInfo>);
 
 // Initialize TOKEN_COSTS with the static costs
-export let TOKEN_COSTS = { ...TOKEN_COSTS_STATIC };
+export let TOKEN_COSTS: Record<string, ModelCostInfo> = { ...TOKEN_COSTS_STATIC };
 
 /**
  * Fetch the latest token costs from the LiteLLM cost tracker.
  * @returns A promise that resolves to the token costs for each model.
  * @throws If the request fails.
  */
-export async function fetchCosts(): Promise<Record<string, any>> {
+export async function fetchCosts(): Promise<Record<string, ModelCostInfo>> {
   try {
     const response = await fetch(PRICES_URL);
     if (response.ok) {
@@ -57,10 +66,13 @@ export async function updateTokenCosts(): Promise<void> {
 }
 
 // Try to update the token costs when the module is loaded
-try {
-  updateTokenCosts().catch(error => {
+// Only in browser environment
+if (typeof window !== 'undefined') {
+  try {
+    updateTokenCosts().catch(error => {
+      console.error("Failed to update token costs. Using static costs.", error);
+    });
+  } catch (error) {
     console.error("Failed to update token costs. Using static costs.", error);
-  });
-} catch (error) {
-  console.error("Failed to update token costs. Using static costs.", error);
+  }
 } 

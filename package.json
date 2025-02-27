@@ -2,8 +2,16 @@
   "name": "tokencost-js",
   "version": "1.0.0",
   "description": "JavaScript port of tokencost",
+  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
   "scripts": {
     "build": "tsc && cp src/model_prices.json dist/",
     "prepublishOnly": "npm run build",
@@ -11,7 +19,14 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"
   },
-  "author": "",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/backmesh/tokencost.git"
+  },
+  "author": "Luis Fernando De Pombo <luis@backmesh.com> (https://backmesh.com)",
+  "bugs": {
+    "url": "https://github.com/backmesh/tokencost/issues"
+  },
   "license": "MIT",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.34.0-alpha.0",

@@ -13,7 +13,9 @@ export {
   calculateAllCostsAndTokens,
   calculateCostByTokens,
   stripFtModelName,
-  type Message
+  type Message,
+  type TokenCostResult,
+  type ModelCostInfo
 } from './costs';
 
 export {
