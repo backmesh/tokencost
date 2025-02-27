@@ -2,7 +2,11 @@
 
 A JavaScript/TypeScript port of the [tokencost](https://github.com/AgentOps-AI/tokencost) library that works in any JavaScript runtime.
 
-This library provides utilities for calculating token counts and costs for various LLM models.
+This library calculates token counts and costs for prompts and completions of various LLM models. It supports Anthropic Claude models using their token counting API [endpoint](https://docs.anthropic.com/en/docs/build-with-claude/token-counting) from their official SDK. This requires for the Anthropic SDK to be configured via [environment variables](https://github.com/anthropics/anthropic-sdk-typescript/blob/e44b7ec548444fbb4ac83061e4c6785b685131ba/src/index.ts#L205) for Anthropic cost calculations to work. If you calculate the costs of a completion for an Anthropic model, it will fail unless you set these environment variables.
+
+> [!CAUTION]
+> Make sure you not expose your `ANTHROPIC_API_KEY` on the internet! You should never expose any secrets in the bundle of a web or mobile app. The demo site supports Anthropic calculations because it uses a [Backmesh LLM API Gatekeeper](https://backmesh.com/docs) for communication with the Anthropic API. The `ANTHROPIC_BASE_URL` is set to the Backmesh URL and the `ANTHROPIC_API_KEY` is set to a JWT generated using anonymous Firebase authentication. Backmesh is an open source Backend as a Service (BaaS) available [here](https://github.com/backmesh/backmesh).
+
 
 ## Installation
 
@@ -87,7 +91,3 @@ The library supports a wide range of models including:
 - OpenAI models (GPT-3.5, GPT-4, GPT-4o, etc.)
 - Claude models (with estimated token counts)
 - And many more
-
-## License
-
-ISC 

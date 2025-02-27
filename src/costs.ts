@@ -3,6 +3,7 @@
  */
 
 import { getEncoding, encodingForModel } from 'js-tiktoken';
+import Anthropic from '@anthropic-ai/sdk';
 import { TOKEN_COSTS } from './constants';
 
 // Type definitions
@@ -40,20 +41,42 @@ function getEncodingForModel(model: string) {
 }
 
 /**
+ * Count tokens for Anthropic Claude models using their official SDK
+ * @param messages Message format for prompt requests
+ * @param model Name of the Claude model
+ * @returns Total number of tokens in the messages
+ */
+async function countClaudeTokens(messages: Message[], model: string): Promise<number> {
+  try {
+    const anthropic = new Anthropic();
+    const result = await anthropic.beta.messages.countTokens({
+      model: model,
+      messages: messages.map(msg => ({
+        role: (msg.role === "user" || msg.role === "assistant") ? msg.role : "user",
+        content: msg.content
+      }))
+    });
+    return result.input_tokens;
+  } catch (error) {
+    console.error("Error counting tokens with Anthropic API:", error);
+    // Fallback to rough estimate if API call fails
+    return messages.reduce((total, msg) => total + Math.ceil(msg.content.length / 4), 0);
+  }
+}
+
+/**
  * Count the number of tokens in a message array.
  * @param messages Message format for prompt requests
  * @param model Name of LLM to choose encoding for
  * @returns Total number of tokens in the messages
  */
-export function countMessageTokens(messages: Message[], model: string): number {
+export async function countMessageTokens(messages: Message[], model: string): Promise<number> {
   model = model.toLowerCase();
   model = stripFtModelName(model);
 
-  // Claude models are not supported in js-tiktoken
+  // Use Anthropic's API for Claude models
   if (model.includes("claude-")) {
-    console.warn("Warning: Claude models are not supported for token counting in js-tiktoken. Returning an estimate.");
-    // Return a rough estimate based on character count
-    return messages.reduce((total, msg) => total + Math.ceil(msg.content.length / 4), 0);
+    return await countClaudeTokens(messages, model);
   }
 
   const encoding = getEncodingForModel(model);
@@ -157,7 +180,7 @@ export function calculateCostByTokens(numTokens: number, model: string, tokenTyp
  * @param model The model name
  * @returns The calculated cost in USD
  */
-export function calculatePromptCost(prompt: Message[] | string, model: string): number {
+export async function calculatePromptCost(prompt: Message[] | string, model: string): Promise<number> {
   model = model.toLowerCase();
   model = stripFtModelName(model);
   
@@ -169,9 +192,12 @@ export function calculatePromptCost(prompt: Message[] | string, model: string): 
     throw new TypeError(`Prompt must be either a string or list of message objects but found ${typeof prompt} instead.`);
   }
   
-  const promptTokens = typeof prompt === 'string' && !model.includes("claude-")
-    ? countStringTokens(prompt, model)
-    : countMessageTokens(Array.isArray(prompt) ? prompt : [{ role: "user", content: prompt }], model);
+  let promptTokens: number;
+  if (typeof prompt === 'string' && !model.includes("claude-")) {
+    promptTokens = countStringTokens(prompt, model);
+  } else {
+    promptTokens = await countMessageTokens(Array.isArray(prompt) ? prompt : [{ role: "user", content: prompt }], model);
+  }
 
   return calculateCostByTokens(promptTokens, model, 'input');
 }
@@ -182,7 +208,7 @@ export function calculatePromptCost(prompt: Message[] | string, model: string): 
  * @param model The model name
  * @returns The calculated cost in USD
  */
-export function calculateCompletionCost(completion: string, model: string): number {
+export async function calculateCompletionCost(completion: string, model: string): Promise<number> {
   model = stripFtModelName(model);
   
   if (!TOKEN_COSTS[model]) {
@@ -198,7 +224,8 @@ export function calculateCompletionCost(completion: string, model: string): numb
   if (model.includes("claude-")) {
     const completionList = [{ role: "assistant", content: completion }];
     // Anthropic appends some 13 additional tokens to the actual completion tokens
-    completionTokens = countMessageTokens(completionList, model) - 13;
+    completionTokens = await countMessageTokens(completionList, model);
+    completionTokens = Math.max(0, completionTokens - 13); // Ensure we don't go negative
   } else {
     completionTokens = countStringTokens(completion, model);
   }
@@ -213,24 +240,24 @@ export function calculateCompletionCost(completion: string, model: string): numb
  * @param model The model name
  * @returns The calculated cost and tokens in USD
  */
-export function calculateAllCostsAndTokens(
+export async function calculateAllCostsAndTokens(
   prompt: Message[] | string,
   completion: string,
   model: string
-): {
+): Promise<{
   promptCost: number;
   promptTokens: number;
   completionCost: number;
   completionTokens: number;
-} {
-  const promptCost = calculatePromptCost(prompt, model);
-  const completionCost = calculateCompletionCost(completion, model);
+}> {
+  const promptCost = await calculatePromptCost(prompt, model);
+  const completionCost = await calculateCompletionCost(completion, model);
   
   let promptTokens: number;
   if (typeof prompt === 'string' && !model.includes("claude-")) {
     promptTokens = countStringTokens(prompt, model);
   } else {
-    promptTokens = countMessageTokens(
+    promptTokens = await countMessageTokens(
       Array.isArray(prompt) ? prompt : [{ role: "user", content: prompt }],
       model
     );
@@ -238,10 +265,10 @@ export function calculateAllCostsAndTokens(
 
   let completionTokens: number;
   if (model.includes("claude-")) {
-    console.warn("Warning: Token counting is estimated for Claude models");
     const completionList = [{ role: "assistant", content: completion }];
     // Anthropic appends some 13 additional tokens to the actual completion tokens
-    completionTokens = countMessageTokens(completionList, model) - 13;
+    completionTokens = await countMessageTokens(completionList, model);
+    completionTokens = Math.max(0, completionTokens - 13); // Ensure we don't go negative
   } else {
     completionTokens = countStringTokens(completion, model);
   }

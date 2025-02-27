@@ -12,8 +12,9 @@
     "test:coverage": "vitest run --coverage"
   },
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.34.0-alpha.0",
     "js-tiktoken": "^1.0.19"
   },
   "devDependencies": {
