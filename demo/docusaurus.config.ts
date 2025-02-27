@@ -93,6 +93,10 @@ const config: Config = {
         },
       ],
     },
+    footer: {
+      links: [],
+      copyright: `Made with <a href="https://backmesh.com" target="_self" rel="noopener noreferrer">Backmesh</a> and <a href="https://github.com/backmesh/tokencost" target="_self" rel="noopener noreferrer">tokencost-js</a>.`,
+    },
     prism: {
       theme: prismThemes.github,
       darkTheme: prismThemes.dracula,

@@ -68,13 +68,13 @@ export default function SupabaseJWT() {
 
   return (
     <Layout
-      title="Supabase JWT Generator"
-      description="Generate Supabase JWT tokens for testing"
+      title="LLM Price Calculator"
+      description="Prompt or completion price calculation for multiple LLMs side by side"
     >
       <div className="container margin-vert--lg">
         <div className="row">
           <div className="col col--10 col--offset-1">
-            <h1 className="margin-bottom--lg margin-top--xl">Supabase JWT Generator</h1>
+            <h1 className="margin-bottom--lg margin-top--xl">LLM Price Calculator</h1>
 
             <div className="margin-bottom--lg" style={{ opacity: 0.8 }}>
               <p>
