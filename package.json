@@ -1,0 +1,31 @@
+{
+  "name": "tokencost-js",
+  "version": "1.0.0",
+  "description": "JavaScript port of tokencost",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc && cp src/model_prices.json dist/",
+    "prepublishOnly": "npm run build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "js-tiktoken": "^1.0.19"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.5",
+    "typescript": "^5.7.3",
+    "vitest": "^1.4.0"
+  },
+  "keywords": [
+    "tokens",
+    "cost",
+    "openai",
+    "gpt",
+    "llm"
+  ]
+}
