@@ -11,40 +11,12 @@ import {
 import firebase from "firebase/compat/app";
 import "firebase/compat/auth";
 import OpenAI from 'openai';
-
-// Note: These imports will require adding these packages to your dependencies
-// For OpenAI: npm install openai
-// For Anthropic: Already included in tokencost dependencies
-// For DeepSeek: This is a placeholder, as there's no official DeepSeek SDK
-// In a real implementation, you would use fetch or another HTTP client for DeepSeek
-
-// Placeholder interfaces for the SDKs
-interface OpenAIClient {
-  chat: {
-    completions: {
-      create: (params: any) => Promise<any>;
-    };
-  };
-}
-
-interface AnthropicClient {
-  messages: {
-    create: (params: any) => Promise<any>;
-  };
-}
-
-interface DeepSeekClient {
-  chat: {
-    completions: {
-      create: (params: any) => Promise<any>;
-    };
-  };
-}
+import Anthropic from '@anthropic-ai/sdk';
 
 export default function LLMComparisonTool() {
   const { siteConfig } = useDocusaurusContext();
   const [prompt, setPrompt] = useState('');
-  const supportedModels = ['gemini/gemini-2.0-flash', 'claude-3-5-sonnet-latest', 'gpt-4o'];
+  const supportedModels = ['deepseek/deepseek-chat', 'claude-3-5-sonnet-latest', 'gpt-4o'];
   const [selectedModels, setSelectedModels] = useState(supportedModels);
   const [results, setResults] = useState<{
     model: string;
@@ -113,33 +85,13 @@ export default function LLMComparisonTool() {
       baseURL: 'https://edge.backmesh.com/v1/proxy/PyHU4LvcdsQ4gm2xeniAFhMyuDl2/Uuf7JCuS4SklDFJeeDFR/v1',
     });    
     
-    const anthropic = {
-      messages: {
-        create: async (params: any) => {
-          // This would be replaced with actual API call via Cloudflare
-          return {
-            content: [{ type: 'text', text: "Anthropic response placeholder" }],
-            usage: { input_tokens: 10, output_tokens: 20 }
-          };
-        }
-      }
-    } as AnthropicClient;
-    
-    const deepseek = {
-      chat: {
-        completions: {
-          create: async (params: any) => {
-            // This would be replaced with actual API call via Cloudflare
-            return {
-              choices: [{ message: { content: "DeepSeek response placeholder" } }],
-              usage: { prompt_tokens: 10, completion_tokens: 20 }
-            };
-          }
-        }
-      }
-    } as DeepSeekClient;
-    
-    return { openai, anthropic, deepseek };
+    // Initialize Anthropic client with the SDK
+    const anthropic = new Anthropic({
+      apiKey: jwt,
+      baseURL: 'https://edge.backmesh.com/v1/proxy/PyHU4LvcdsQ4gm2xeniAFhMyuDl2/wj4n16VncpotUPIrwxEi',
+      dangerouslyAllowBrowser: true, // no longer dangerous
+    });
+    return { openai, anthropic, jwt };
   };
 
   // Function to get responses from selected models
@@ -183,23 +135,38 @@ export default function LLMComparisonTool() {
                 temperature: 0.7,
                 max_tokens: 1000,
               });
-              // Fix for Anthropic response format
-              const contentBlock = completion.content[0];
-              response = contentBlock && 'type' in contentBlock && contentBlock.type === 'text' 
-                ? contentBlock.text 
-                : '';
-              promptTokens = 0; //completion.usage?.input_tokens || countStringTokens(prompt, model);
-              completionTokens = 0; //completion.usage?.output_tokens || countStringTokens(response, model);
+              
+              // Extract text from Anthropic response
+              const contentBlock = completion.content.find(item => item.type === 'text');
+              response = contentBlock ? contentBlock.text : '';
+              
+              // Get token counts from usage
+              promptTokens = completion.usage?.input_tokens || countStringTokens(prompt, model);
+              completionTokens = completion.usage?.output_tokens || countStringTokens(response, model);
             } 
             else if (model.includes('deepseek')) {
-              const completion = await clients.deepseek.chat.completions.create({
-                model: model,
-                messages: [{ role: 'user', content: prompt }],
-                temperature: 0.7,
+              const endpoint = 'client/v4/accounts/e4f5d18aedd28895008b8e1f6845a3bc/ai/run/@cf/deepseek-ai/deepseek-r1-distill-qwen-32b'
+              const resp = await fetch(`https://edge.backmesh.com/v1/proxy/PyHU4LvcdsQ4gm2xeniAFhMyuDl2/iybKOnMO7hcyW6rnc58F/${endpoint}`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${clients.jwt}`,
+                },
+                body: JSON.stringify({
+                  messages: [{ role: 'user', content: prompt }],
+                }),
               });
-              response = completion.choices[0]?.message?.content || '';
-              promptTokens = completion.usage?.prompt_tokens || countStringTokens(prompt, model);
-              completionTokens = completion.usage?.completion_tokens || countStringTokens(response, model);
+              
+              if (!resp.ok) {
+                const errorData = await resp.json();
+                throw new Error(errorData.error?.message || `DeepSeek API error: ${resp.status}`);
+              }
+              
+              const completion = await resp.json();
+              console.log(completion);
+              response = completion.result?.response || '';
+              promptTokens = completion.result?.usage?.prompt_tokens || countStringTokens(prompt, model);
+              completionTokens = completion.result?.usage?.completion_tokens || countStringTokens(response, model);
             }
             
             const endTime = Date.now();
