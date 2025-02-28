@@ -13,6 +13,11 @@ import "firebase/compat/auth";
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 
+// Helper function to format costs in scientific notation
+const formatCostScientific = (cost: number): string => {
+  return cost.toExponential(4);
+};
+
 export default function LLMComparisonTool() {
   const { siteConfig } = useDocusaurusContext();
   const [prompt, setPrompt] = useState('');
@@ -378,17 +383,17 @@ export default function LLMComparisonTool() {
                     <div className="margin-bottom--md">
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                         <span><strong>Response Time:</strong> {(result.time / 1000).toFixed(2)}s</span>
-                        <span><strong>Total Cost:</strong> ${result.costs.total.toFixed(6)}</span>
+                        <span><strong>Total Cost:</strong> ${formatCostScientific(result.costs.total)}</span>
                       </div>
                       
                       <div style={{ display: 'flex', gap: '16px', fontSize: '0.9em', color: '#666' }}>
                         <div>
                           <div>Prompt Tokens: {result.tokens.prompt}</div>
-                          <div>Prompt Cost: ${result.costs.prompt.toFixed(6)}</div>
+                          <div>Prompt Cost: ${formatCostScientific(result.costs.prompt)}</div>
                         </div>
                         <div>
                           <div>Completion Tokens: {result.tokens.completion}</div>
-                          <div>Completion Cost: ${result.costs.completion.toFixed(6)}</div>
+                          <div>Completion Cost: ${formatCostScientific(result.costs.completion)}</div>
                         </div>
                         <div>
                           <div>Total Tokens: {result.tokens.total}</div>
