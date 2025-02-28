@@ -12,20 +12,27 @@ import {
 type CalculationResult = {
   model: string;
   tokens: number;
-  cost: number;
+  inputCost: number;
+  outputCost: number;
 };
 
 export default function LLMPriceCalculator() {
-  const { siteConfig } = useDocusaurusContext();
   const [inputText, setInputText] = useState('');
-  const [calculationType, setCalculationType] = useState<'prompt' | 'completion'>('prompt');
-  const [selectedModels, setSelectedModels] = useState<string[]>(['gpt-4', 'claude-3-opus-20240229', 'deepseek-coder-33b-instruct']);
+  const [selectedModels, setSelectedModels] = useState<string[]>(['gpt-4']);
   const [results, setResults] = useState<CalculationResult[]>([]);
   const [isCalculating, setIsCalculating] = useState(false);
   const [error, setError] = useState('');
+  const [modelFilter, setModelFilter] = useState('');
 
-  // Get available models from TOKEN_COSTS_STATIC
-  const availableModels = Object.keys(TOKEN_COSTS_STATIC).sort();
+  // Get available models from TOKEN_COSTS_STATIC, ensuring they have both input and output costs
+  const availableModels = Object.entries(TOKEN_COSTS_STATIC)
+    .filter(([_, modelInfo]) => 
+      modelInfo.input_cost_per_token !== undefined && 
+      modelInfo.output_cost_per_token !== undefined &&
+      modelInfo.litellm_provider !== 'ollama'
+    )
+    .map(([model]) => model)
+    .sort();
 
   // Group models by provider for better organization in the select dropdown
   const modelsByProvider = availableModels.reduce((acc, model) => {
@@ -34,6 +41,19 @@ export default function LLMPriceCalculator() {
       acc[provider] = [];
     }
     acc[provider].push(model);
+    return acc;
+  }, {} as Record<string, string[]>);
+
+  // Filter models based on search input
+  const filteredModelsByProvider = Object.entries(modelsByProvider).reduce((acc, [provider, models]) => {
+    const filteredModels = models.filter(model => 
+      model.toLowerCase().includes(modelFilter.toLowerCase())
+    );
+    
+    if (filteredModels.length > 0) {
+      acc[provider] = filteredModels;
+    }
+    
     return acc;
   }, {} as Record<string, string[]>);
 
@@ -52,18 +72,14 @@ export default function LLMPriceCalculator() {
       
       for (const model of selectedModels) {
         const tokens = countStringTokens(inputText, model);
-        let cost = 0;
-        
-        if (calculationType === 'prompt') {
-          cost = await calculatePromptCost(inputText, model);
-        } else {
-          cost = await calculateCompletionCost(inputText, model);
-        }
+        const inputCost = await calculatePromptCost(inputText, model);
+        const outputCost = await calculateCompletionCost(inputText, model);
         
         newResults.push({
           model,
           tokens,
-          cost
+          inputCost,
+          outputCost
         });
       }
       
@@ -92,7 +108,7 @@ export default function LLMPriceCalculator() {
   return (
     <Layout
       title="LLM Price Calculator"
-      description="Prompt or completion price calculation for multiple LLMs side by side"
+      description="Price calculation for multiple LLMs side by side"
     >
       <div className="container margin-vert--lg">
         <div className="row">
@@ -101,29 +117,9 @@ export default function LLMPriceCalculator() {
 
             <div className="margin-bottom--lg" style={{ opacity: 0.8 }}>
               <p>
-                Calculate and compare pricing for prompts or completions across multiple LLM models.
+                Calculate pricing input and output costs for a text sample across multiple LLM models.
                 This tool runs entirely in your browser - no data is transmitted to our servers.
               </p>
-            </div>
-
-            <div className="margin-bottom--lg">
-              <label className="margin-bottom--sm" style={{ display: 'block', fontWeight: 'bold' }}>
-                Calculation Type:
-              </label>
-              <div className="button-group">
-                <button
-                  className={`button ${calculationType === 'prompt' ? 'button--primary' : 'button--secondary'}`}
-                  onClick={() => setCalculationType('prompt')}
-                >
-                  Prompt
-                </button>
-                <button
-                  className={`button ${calculationType === 'completion' ? 'button--primary' : 'button--secondary'}`}
-                  onClick={() => setCalculationType('completion')}
-                >
-                  Completion
-                </button>
-              </div>
             </div>
 
             <div className="margin-bottom--lg">
@@ -142,14 +138,29 @@ export default function LLMPriceCalculator() {
                 }}
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                placeholder={`Enter your ${calculationType} text here...`}
+                placeholder="Enter your text here..."
               />
             </div>
 
             <div className="margin-bottom--lg">
               <label className="margin-bottom--sm" style={{ display: 'block', fontWeight: 'bold' }}>
-                Select Models:
+                Models:
               </label>
+              <input
+                type="text"
+                className="input"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  borderRadius: '4px',
+                  border: '1px solid #ccc',
+                  fontSize: '14px',
+                  marginBottom: '8px',
+                }}
+                value={modelFilter}
+                onChange={(e) => setModelFilter(e.target.value)}
+                placeholder="Filter models..."
+              />
               <select
                 multiple
                 className="input"
@@ -164,7 +175,7 @@ export default function LLMPriceCalculator() {
                 value={selectedModels}
                 onChange={handleModelSelectionChange}
               >
-                {Object.entries(modelsByProvider).map(([provider, models]) => (
+                {Object.entries(filteredModelsByProvider).map(([provider, models]) => (
                   <optgroup key={provider} label={provider.toUpperCase()}>
                     {models.map(model => (
                       <option key={model} value={model}>
@@ -177,6 +188,50 @@ export default function LLMPriceCalculator() {
               <div style={{ fontSize: '0.8rem', opacity: 0.8, marginTop: '4px' }}>
                 Hold Ctrl/Cmd to select multiple models
               </div>
+              
+              {/* Display selected models as tags */}
+              {selectedModels.length > 0 && (
+                <div className="margin-top--md">
+                  <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>
+                    Selected Models ({selectedModels.length}):
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                    {selectedModels.map(model => (
+                      <div 
+                        key={model}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          backgroundColor: 'var(--ifm-color-primary-lightest, #e6f6ff)',
+                          color: 'var(--ifm-color-primary-darkest, #0076ce)',
+                          padding: '4px 10px',
+                          borderRadius: '16px',
+                          fontSize: '14px',
+                        }}
+                      >
+                        <span>{model}</span>
+                        <button
+                          onClick={() => {
+                            setSelectedModels(selectedModels.filter(m => m !== model));
+                          }}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            marginLeft: '6px',
+                            padding: '0 4px',
+                            fontSize: '16px',
+                            color: 'var(--ifm-color-primary-dark, #0076ce)',
+                          }}
+                          aria-label={`Remove ${model}`}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="margin-bottom--xl">
@@ -212,8 +267,10 @@ export default function LLMPriceCalculator() {
                       <tr>
                         <th>Model</th>
                         <th>Tokens</th>
-                        <th>Cost (USD)</th>
-                        <th>Cost per 1K Tokens</th>
+                        <th>Input Cost per 1K Tokens</th>
+                        <th>Cost as Input (USD)</th>
+                        <th>Output Cost per 1K Tokens</th>
+                        <th>Cost as Output (USD)</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -221,8 +278,10 @@ export default function LLMPriceCalculator() {
                         <tr key={index}>
                           <td>{result.model}</td>
                           <td>{result.tokens.toLocaleString()}</td>
-                          <td>${result.cost.toFixed(6)}</td>
-                          <td>${(result.cost / result.tokens * 1000).toFixed(6)}</td>
+                          <td>${parseFloat((result.inputCost / result.tokens * 1000).toFixed(6))}</td>
+                          <td>${parseFloat(result.inputCost.toFixed(6))}</td>
+                          <td>${parseFloat((result.outputCost / result.tokens * 1000).toFixed(6))}</td>
+                          <td>${parseFloat(result.outputCost.toFixed(6))}</td>
                         </tr>
                       ))}
                     </tbody>
