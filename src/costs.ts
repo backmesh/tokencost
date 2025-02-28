@@ -89,7 +89,6 @@ async function countClaudeTokens(messages: Message[], model: string): Promise<nu
  * @returns Total number of tokens in the messages
  */
 export async function countMessageTokens(messages: Message[], model: string): Promise<number> {
-  model = model.toLowerCase();
   model = stripFtModelName(model);
 
   // Use Anthropic's API for Claude models
@@ -158,7 +157,6 @@ export async function countMessageTokens(messages: Message[], model: string): Pr
  * @returns The number of tokens in the text string
  */
 export function countStringTokens(prompt: string, model: string): number {
-  model = model.toLowerCase();
 
   if (model.includes("/")) {
     model = model.split("/").pop() || model;
@@ -180,7 +178,6 @@ export function countStringTokens(prompt: string, model: string): number {
  * @returns The calculated cost in USD
  */
 export function calculateCostByTokens(numTokens: number, model: string, tokenType: 'input' | 'output'): number {
-  model = model.toLowerCase();
   
   if (!TOKEN_COSTS[model]) {
     throw new Error(`Model ${model} is not implemented. Double-check your spelling, or submit an issue/PR`);
@@ -199,7 +196,6 @@ export function calculateCostByTokens(numTokens: number, model: string, tokenTyp
  * @returns The calculated cost in USD
  */
 export async function calculatePromptCost(prompt: Message[] | string, model: string): Promise<number> {
-  model = model.toLowerCase();
   model = stripFtModelName(model);
   
   if (!TOKEN_COSTS[model]) {

@@ -1,6 +1,6 @@
 // Import fs and path conditionally for browser compatibility
 import { ModelCostInfo } from './costs';
-import * as staticCostsRaw from './model_prices.json';
+import staticCostsRaw from './model_prices.json';
 
 /**
  * Prompt (aka context) tokens are based on number of words + other chars (eg spaces and punctuation) in input.

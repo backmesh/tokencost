@@ -90,6 +90,12 @@ describe('calculateCompletionCost', () => {
     expect(cost).toBeGreaterThan(0);
     expect(typeof cost).toBe('number');
   });
+
+  it('should calculate completion cost correctly for HuggingFaceH4 models', async () => {
+    const cost = await calculateCompletionCost('Hello, world!', 'anyscale/HuggingFaceH4/zephyr-7b-beta');
+    expect(cost).toBeGreaterThan(0);
+    expect(typeof cost).toBe('number');
+  });
   
   it('should calculate completion cost correctly for Claude models', async () => {
     const cost = await calculateCompletionCost('Hello, world!', 'claude-3-opus-latest');
