@@ -15,14 +15,16 @@
     "typecheck": "tsc"
   },
   "dependencies": {
-    "tokencost": "file:../",
     "@docusaurus/core": "^3.7.0",
     "@docusaurus/preset-classic": "^3.7.0",
     "@mdx-js/react": "^3.1.0",
     "clsx": "^2.1.1",
+    "firebase": "^11.4.0",
+    "openai": "^5.0.0-alpha.0",
     "posthog-docusaurus": "^2.0.2",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "tokencost": "file:../"
   },
   "devDependencies": {
     "@docusaurus/module-type-aliases": "^3.7.0",

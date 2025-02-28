@@ -1,4 +1,3 @@
-/// <reference path="../../../dist/index.d.ts" />
 import React, { useState, useEffect } from 'react';
 import Layout from '@theme/Layout';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
@@ -9,6 +8,9 @@ import {
   updateTokenCosts,
   TOKEN_COSTS
 } from 'tokencost';
+import firebase from "firebase/compat/app";
+import "firebase/compat/auth";
+import OpenAI from 'openai';
 
 // Note: These imports will require adding these packages to your dependencies
 // For OpenAI: npm install openai
@@ -61,6 +63,7 @@ export default function LLMComparisonTool() {
   }[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [modelErrors, setModelErrors] = useState<Record<string, string>>({});
   const [availableModels, setAvailableModels] = useState<string[]>([]);
 
   // Load available models on component mount
@@ -90,24 +93,25 @@ export default function LLMComparisonTool() {
   }, []);
 
   // Initialize SDK clients
-  const initializeClients = () => {
-    // Note: In a real implementation, you would use environment variables or user-provided API keys
-    // For this demo, we'll assume the API keys will be replaced with proxies as mentioned
-    
+  const initializeClients = async () => {
+    firebase.initializeApp({
+      apiKey: "AIzaSyAYbn4at9zM-iq5UqsI9tDzU03NY-R8wV8",
+    });
+    const auth = firebase.auth();
+    const user = auth.currentUser;
+    let jwt = '';
+    if (!user) {
+      const cred = await auth.signInAnonymously()
+      jwt = await cred.user?.getIdToken();
+    } else {
+      jwt = await user.getIdToken();
+    }
     // This is a placeholder implementation - in a real app, you would import the actual SDKs
-    const openai = {
-      chat: {
-        completions: {
-          create: async (params: any) => {
-            // This would be replaced with actual API call via Cloudflare
-            return {
-              choices: [{ message: { content: "OpenAI response placeholder" } }],
-              usage: { prompt_tokens: 10, completion_tokens: 20 }
-            };
-          }
-        }
-      }
-    } as OpenAIClient;
+    const openai =  new OpenAI({
+      apiKey: jwt,
+      dangerouslyAllowBrowser: true, // no longer dangerous
+      baseURL: 'https://edge.backmesh.com/v1/proxy/PyHU4LvcdsQ4gm2xeniAFhMyuDl2/Uuf7JCuS4SklDFJeeDFR/v1',
+    });    
     
     const anthropic = {
       messages: {
@@ -147,9 +151,10 @@ export default function LLMComparisonTool() {
 
     setLoading(true);
     setError('');
+    setModelErrors({});
     setResults([]);
 
-    const clients = initializeClients();
+    const clients = await initializeClients();
     
     try {
       const responses = await Promise.allSettled(
@@ -183,8 +188,8 @@ export default function LLMComparisonTool() {
               response = contentBlock && 'type' in contentBlock && contentBlock.type === 'text' 
                 ? contentBlock.text 
                 : '';
-              promptTokens = completion.usage?.input_tokens || countStringTokens(prompt, model);
-              completionTokens = completion.usage?.output_tokens || countStringTokens(response, model);
+              promptTokens = 0; //completion.usage?.input_tokens || countStringTokens(prompt, model);
+              completionTokens = 0; //completion.usage?.output_tokens || countStringTokens(response, model);
             } 
             else if (model.includes('deepseek')) {
               const completion = await clients.deepseek.chat.completions.create({
@@ -218,6 +223,11 @@ export default function LLMComparisonTool() {
             };
           } catch (err) {
             console.error(`Error getting response from ${model}:`, err);
+            // Update model errors state
+            setModelErrors(prev => ({
+              ...prev,
+              [model]: err.message || 'Unknown error occurred'
+            }));
             return {
               model,
               response: `Error: ${err.message}`,
@@ -267,20 +277,6 @@ export default function LLMComparisonTool() {
     );
   };
 
-  // Group models by provider for the selection UI
-  const groupedModels = availableModels.reduce((acc, model) => {
-    let provider = 'other';
-    
-    if (model.includes('gpt')) provider = 'openai';
-    else if (model.includes('claude')) provider = 'anthropic';
-    else if (model.includes('deepseek')) provider = 'deepseek';
-    
-    if (!acc[provider]) acc[provider] = [];
-    acc[provider].push(model);
-    
-    return acc;
-  }, {} as Record<string, string[]>);
-
   return (
     <Layout
       title="Compare LLM answers and costs for the same prompt"
@@ -324,30 +320,28 @@ export default function LLMComparisonTool() {
               </label>
               
               <div style={{ maxHeight: '300px', overflowY: 'auto', border: '1px solid #eee', padding: '12px', borderRadius: '4px' }}>
-                {Object.entries(groupedModels).map(([provider, models]) => (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                    {models.map(model => (
-                      <label key={model} style={{ 
-                        display: 'inline-flex', 
-                        alignItems: 'center',
-                        padding: '4px 8px',
-                        backgroundColor: selectedModels.includes(model) ? '#e6f7ff' : '#f5f5f5',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        marginRight: '8px',
-                        marginBottom: '8px'
-                      }}>
-                        <input
-                          type="checkbox"
-                          checked={selectedModels.includes(model)}
-                          onChange={() => handleModelChange(model)}
-                          style={{ marginRight: '6px' }}
-                        />
-                        {model}
-                      </label>
-                    ))}
-                  </div>
-                ))}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  {availableModels.map(model => (
+                    <label key={model} style={{ 
+                      display: 'inline-flex', 
+                      alignItems: 'center',
+                      padding: '4px 8px',
+                      backgroundColor: selectedModels.includes(model) ? '#e6f7ff' : '#f5f5f5',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      marginRight: '8px',
+                      marginBottom: '8px'
+                    }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedModels.includes(model)}
+                        onChange={() => handleModelChange(model)}
+                        style={{ marginRight: '6px' }}
+                      />
+                      {model}
+                    </label>
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -372,6 +366,28 @@ export default function LLMComparisonTool() {
                 }}
               >
                 {error}
+              </div>
+            )}
+
+            {Object.keys(modelErrors).length > 0 && (
+              <div className="margin-bottom--md">
+                <h4>Model Errors:</h4>
+                {Object.entries(modelErrors).map(([model, errorMessage]) => (
+                  <div
+                    key={model}
+                    style={{
+                      padding: '10px',
+                      backgroundColor: '#fff3e0',
+                      color: '#e65100',
+                      borderRadius: '4px',
+                      marginBottom: '8px',
+                      display: 'flex',
+                      justifyContent: 'space-between'
+                    }}
+                  >
+                    <strong>{model}:</strong> {errorMessage}
+                  </div>
+                ))}
               </div>
             )}
 
