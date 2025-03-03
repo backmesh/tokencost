@@ -7,7 +7,7 @@ import {
   countStringTokens,
   updateTokenCosts,
   TOKEN_COSTS
-} from 'tokencost';
+} from 'tokencost-js';
 import firebase from "firebase/compat/app";
 import "firebase/compat/auth";
 import OpenAI from 'openai';

@@ -25,7 +25,7 @@
     "posthog-docusaurus": "^2.0.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "tokencost": "^1.0.1"
+    "tokencost-js": "^1.0.1"
   },
   "devDependencies": {
     "@docusaurus/module-type-aliases": "^3.7.0",
