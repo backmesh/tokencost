@@ -86,7 +86,7 @@ const config: Config = {
           target: "_self",
         },
         {
-          href: "https://github.com/backmesh/backmesh",
+          href: "https://github.com/backmesh/tokencost",
           position: "right",
           className: "header-github-link",
           "aria-label": "GitHub repository",

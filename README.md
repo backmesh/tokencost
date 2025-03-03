@@ -2,6 +2,8 @@
 
 A JavaScript/TypeScript port of the [tokencost](https://github.com/AgentOps-AI/tokencost) library that works in any JavaScript runtime.
 
+Demo that estimates the price for a given prompt or completion across multiple LLMs: [llmcomp.backmesh.com](https://llmcomp.backmesh.com)
+
 This library calculates token counts and costs for prompts and completions of various LLM models. It supports Anthropic Claude models using their token counting API [endpoint](https://docs.anthropic.com/en/docs/build-with-claude/token-counting) from their official SDK. This requires for the Anthropic SDK to be configured via [environment variables](https://github.com/anthropics/anthropic-sdk-typescript/blob/e44b7ec548444fbb4ac83061e4c6785b685131ba/src/index.ts#L205) for Anthropic cost calculations to work. If you calculate the costs of a completion for an Anthropic model, it will fail unless you set these environment variables.
 
 > [!CAUTION]
@@ -27,33 +29,46 @@ import {
   calculateAllCostsAndTokens 
 } from 'tokencost-js';
 
-// Count tokens in a string
-const stringTokens = countStringTokens("Hello, world!", "gpt-4");
-console.log(`String tokens: ${stringTokens}`);
+async function main() {
+  // Example 1: Count tokens in a string
+  const text = "Hello, world! This is a test message to count tokens.";
+  const model = "gpt-4";
+  const stringTokens = await countStringTokens(text, model);
+  console.log(`Example 1: String "${text}" has ${stringTokens} tokens with model ${model}`);
 
-// Count tokens in messages
-const messages = [
-  { role: "user", content: "Hello, how are you?" },
-  { role: "assistant", content: "I'm doing well, thank you for asking!" }
-];
-const messageTokens = countMessageTokens(messages, "gpt-3.5-turbo");
-console.log(`Message tokens: ${messageTokens}`);
+  // Example 2: Count tokens in messages
+  const messages = [
+    { role: "system", content: "You are a helpful assistant." },
+    { role: "user", content: "What is the capital of France?" },
+    { role: "assistant", content: "The capital of France is Paris." },
+    { role: "user", content: "What about Germany?" }
+  ];
+  const messageTokens = await countMessageTokens(messages, "gpt-3.5-turbo");
+  console.log(`Example 2: Messages have ${messageTokens} tokens with model gpt-3.5-turbo`);
 
-// Calculate prompt cost
-const promptCost = calculatePromptCost("What is the capital of France?", "gpt-4");
-console.log(`Prompt cost: $${promptCost.toFixed(6)}`);
+  // Example 3: Calculate prompt cost
+  const promptCost = await calculatePromptCost("What is the capital of France?", "gpt-4");
+  console.log(`Example 3: Prompt cost: $${promptCost.toFixed(6)} with model gpt-4`);
 
-// Calculate completion cost
-const completionCost = calculateCompletionCost("The capital of France is Paris.", "gpt-4");
-console.log(`Completion cost: $${completionCost.toFixed(6)}`);
+  // Example 4: Calculate completion cost
+  const completionCost = await calculateCompletionCost("The capital of France is Paris.", "gpt-4");
+  console.log(`Example 4: Completion cost: $${completionCost.toFixed(6)} with model gpt-4`);
 
-// Calculate all costs and tokens
-const allCosts = calculateAllCostsAndTokens(
-  "What is the capital of France?",
-  "The capital of France is Paris.",
-  "gpt-4"
-);
-console.log(allCosts);
+  // Example 5: Calculate all costs and tokens
+  const allCosts = await calculateAllCostsAndTokens(
+    "What is the capital of France?",
+    "The capital of France is Paris.",
+    "gpt-4"
+  );
+  console.log("Example 5: All costs and tokens:");
+  console.log(`  Prompt tokens: ${allCosts.promptTokens}`);
+  console.log(`  Prompt cost: $${allCosts.promptCost.toFixed(6)}`);
+  console.log(`  Completion tokens: ${allCosts.completionTokens}`);
+  console.log(`  Completion cost: $${allCosts.completionCost.toFixed(6)}`);
+  console.log(`  Total cost: $${(allCosts.promptCost + allCosts.completionCost).toFixed(6)}`);
+}
+
+main().catch(console.error); 
 ```
 
 ### Working with Messages
@@ -68,7 +83,7 @@ const messages: Message[] = [
   { role: "user", content: "How many planets are there?" }
 ];
 
-const cost = calculatePromptCost(messages, "gpt-4");
+const cost = await calculatePromptCost(messages, "gpt-4");
 console.log(`Cost to process these messages: $${cost.toFixed(6)}`);
 ```
 
