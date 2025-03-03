@@ -2,7 +2,7 @@
 
 A JavaScript/TypeScript port of the [tokencost](https://github.com/AgentOps-AI/tokencost) library that works in any JavaScript runtime.
 
-Demo that estimates the price for a given prompt or completion across multiple LLMs: [llmcomp.backmesh.com](https://llmcomp.backmesh.com)
+Demo that estimates the price across multiple LLMs: [llmcomp.backmesh.com](https://llmcomp.backmesh.com)
 
 This library calculates token counts and costs for prompts and completions of various LLM models. It supports Anthropic Claude models using their token counting API [endpoint](https://docs.anthropic.com/en/docs/build-with-claude/token-counting) from their official SDK. This requires for the Anthropic SDK to be configured via [environment variables](https://github.com/anthropics/anthropic-sdk-typescript/blob/e44b7ec548444fbb4ac83061e4c6785b685131ba/src/index.ts#L205) for Anthropic cost calculations to work. If you calculate the costs of a completion for an Anthropic model, it will fail unless you set these environment variables.
 
